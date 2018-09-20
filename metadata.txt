@@ -1,0 +1,9 @@
+Version 1, no optimization:
+Clock Counter: 414756
+Program Memory Usage: 4674 bytes
+Data Memory Usage: 442 bytes
+
+Version 1, -O3 optimization:
+Clock Counter: 104339
+Program Memory Usage: 5766 bytes
+Data Memory Usage: 442 bytes
