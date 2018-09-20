@@ -146,27 +146,22 @@ unsigned char M[4][4] = {
 	}
 
 	int main(void) {
-		const char plaintext[] = "f34481ec3cc627bacd5dc3fb08f273e6", key[] = "00000000000000000000000000000000";
-		unsigned char res[16];
-		const char *pos1 = plaintext, *pos2 = key;
-		unsigned char state[16], tempKey2[16], tempState[16], tempKey[16], *newState, *newKey;
+		unsigned char state[16] = {
+				0xf3, 0x3c, 0xcd, 0x08, 
+				0x44, 0xc6, 0x5d, 0xf2, 
+				0x81, 0x27, 0xc3, 0x73, 
+				0xec, 0xba, 0xfb, 0xe6
+			}, 
+			key[16] = {
+				0x00, 0x00, 0x00, 0x00, 
+				0x00, 0x00, 0x00, 0x00, 
+				0x00, 0x00, 0x00, 0x00, 
+				0x00, 0x00, 0x00, 0x00
+			}, 
+			*newState, *newKey, res[16];
 
-		// Plaintext to state array and key similar
-		for (int i = 0; i < sizeof state/sizeof *state; i++) {
-			sscanf(pos1, "%2hhx", &tempState[i]);
-			sscanf(pos2, "%2hhx", &tempKey[i]);
-			pos1 += 2;
-			pos2 += 2;
-		}
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				tempKey2[4 * i + j] = tempKey[4 * j + i];
-				state[4 * i + j] = tempState[4 * j + i];
-			}
-		}
-
-		newState = addRoundKey(state, tempKey2);
-		newKey = keySchedule(tempKey2, 0);
+		newState = addRoundKey(state, key);
+		newKey = keySchedule(key, 0);
 
 		for (int i = 1; i < 10; i++) {
 			newState = subBytes(newState);
