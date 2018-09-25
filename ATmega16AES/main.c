@@ -28,10 +28,6 @@ unsigned char* subBytes(unsigned char currentState[16]) {
 	return newState;
 }
 
-unsigned char sBox(unsigned char ch) {
-	return S[ch];
-}
-
 unsigned char* shiftRows(unsigned char currentState[16]) {
 	static unsigned char newState[16];
 	for (int i = 0; i < 4; i++) {
@@ -49,141 +45,142 @@ unsigned char M[4][4] = {
 	{0x01, 0x01, 0x02, 0x03},
 	{0x03, 0x01, 0x01, 0x02} };
 
-	//Multiply two numbers in the GF(2^8) finite field defined by the polynomial x^8 + x^4 + x^3 + x + 1 = 0
-	char gMul(char a, char b) {
-		char p = 0;
-		for (int i = 0; i < 8; i++) {
-			if (b & 1) {
-				p ^= a;
-			}
-			if (a & 0x80) {
-				a <<= 1;
-				a ^= 0x1b;
-				} else {
-				a <<= 1;
-			}
-			b >>= 1;
+//Multiply two numbers in the GF(2^8) finite field defined by the polynomial x^8 + x^4 + x^3 + x + 1 = 0
+char gMul(char a, char b) {
+	char p = 0;
+	for (int i = 0; i < 8; i++) {
+		if (b & 1) {
+			p ^= a;
 		}
-		return p;
-	}
-
-	unsigned char vectorsDotProd(unsigned char *x, const unsigned char *y) {
-		unsigned char res = 0x00;
-		for (int i = 0; i < 4; i++) {
-			res ^= gMul(x[i], y[i]);
+		if (a & 0x80) {
+			a <<= 1;
+			a ^= 0x1b;
+			} else {
+			a <<= 1;
 		}
-		return res;
+		b >>= 1;
 	}
+	return p;
+}
 
-	unsigned char* matrixVectorMult(const unsigned char *vec) {
-		static unsigned char result[4];
-		for (int i = 0; i < 4; i++) {
-			result[i] = vectorsDotProd(M[i], vec);
+unsigned char vectorsDotProd(unsigned char *x, const unsigned char *y) {
+	unsigned char res = 0x00;
+	for (int i = 0; i < 4; i++) {
+		res ^= gMul(x[i], y[i]);
+	}
+	return res;
+}
+
+unsigned char* matrixVectorMult(const unsigned char *vec) {
+	static unsigned char result[4];
+	for (int i = 0; i < 4; i++) {
+		result[i] = vectorsDotProd(M[i], vec);
+	}
+	return result;
+}
+
+unsigned char* mixColumns(unsigned char state[16]) {
+	static unsigned char result[16];
+	unsigned char *subres;
+	for (int i = 0; i < 4; i++) {
+		unsigned char vec[4];
+		for (int j = 0; j < 4; j++) {
+			vec[j] = state[4 * j + i];
 		}
-		return result;
-	}
-
-	unsigned char* mixColumns(unsigned char state[16]) {
-		static unsigned char result[16];
-		unsigned char *subres;
-		for (int i = 0; i < 4; i++) {
-			unsigned char vec[4];
-			for (int j = 0; j < 4; j++) {
-				vec[j] = state[4 * j + i];
-			}
-			subres = matrixVectorMult(vec);
-			for (int j = 0; j < 4; j++) {
-				result[4 * j + i] = subres[j];
-			}
+		subres = matrixVectorMult(vec);
+		for (int j = 0; j < 4; j++) {
+			result[4 * j + i] = subres[j];
 		}
-		return result;
 	}
+	return result;
+}
 
-	unsigned char* addRoundKey(unsigned char currentState[16], unsigned char key[16]) {
-		static unsigned char newState[16];
-		for (int i = 0; i < 16; i++) {
-			newState[i] = currentState[i] ^ key[i];
+unsigned char* addRoundKey(unsigned char currentState[16], unsigned char key[16]) {
+	static unsigned char newState[16];
+	for (int i = 0; i < 16; i++) {
+		newState[i] = currentState[i] ^ key[i];
+	}
+	return newState;
+}
+
+unsigned char roundConst[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
+
+unsigned char* getFunnyWord(unsigned char subWord[4], unsigned char roundConst) {
+	static unsigned char funnyWord[4];
+	for (int i = 0; i < 4; i++) {
+		if (i == 0) {
+			funnyWord[i] = S[subWord[(i + 1) % 4]] ^ roundConst;
+			} else {
+			funnyWord[i] = S[subWord[(i + 1) % 4]];
 		}
-		return newState;
 	}
+	return funnyWord;
+}
 
-	unsigned char roundConst[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
+unsigned char* keySchedule(unsigned char currentKey[16], int round) {
+	static unsigned char newKey[16];
+	unsigned char currentSubKeys[4][4];
+	unsigned char *funnyWord;
 
-	unsigned char* getFunnyWord(unsigned char subWord[4], unsigned char roundConst) {
-		static unsigned char funnyWord[4];
-		for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			currentSubKeys[i][j] = currentKey[4 * j + i];
+		}
+	}
+	funnyWord = getFunnyWord(currentSubKeys[3], roundConst[round]);
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
 			if (i == 0) {
-				funnyWord[i] = sBox(subWord[(i + 1) % 4]) ^ roundConst;
+				newKey[4 * j + i] = currentSubKeys[i][j] ^ funnyWord[j];
 				} else {
-				funnyWord[i] = sBox(subWord[(i + 1) % 4]);
+				newKey[4 * j + i] = currentSubKeys[i][j] ^ newKey[4 * j + (i - 1)];
 			}
 		}
-		return funnyWord;
 	}
+	return newKey;
+}
 
-	unsigned char* keySchedule(unsigned char currentKey[16], int round) {
-		static unsigned char newKey[16];
-		unsigned char currentSubKeys[4][4];
-		unsigned char *funnyWord;
+int main(void) {
+	unsigned char state[16] = {
+			0xf3, 0x3c, 0xcd, 0x08, 
+			0x44, 0xc6, 0x5d, 0xf2, 
+			0x81, 0x27, 0xc3, 0x73, 
+			0xec, 0xba, 0xfb, 0xe6
+		}, 
+		key[16] = {
+			0x00, 0x00, 0x00, 0x00, 
+			0x00, 0x00, 0x00, 0x00, 
+			0x00, 0x00, 0x00, 0x00, 
+			0x00, 0x00, 0x00, 0x00
+		}, 
+		*newState, *newKey, res[16];
 
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				currentSubKeys[i][j] = currentKey[4 * j + i];
-			}
-		}
-		funnyWord = getFunnyWord(currentSubKeys[3], roundConst[round]);
+	newState = addRoundKey(state, key);
+	newKey = keySchedule(key, 0);
 
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				if (i == 0) {
-					newKey[4 * j + i] = currentSubKeys[i][j] ^ funnyWord[j];
-					} else {
-					newKey[4 * j + i] = currentSubKeys[i][j] ^ newKey[4 * j + (i - 1)];
-				}
-			}
-		}
-		return newKey;
-	}
-
-	int main(void) {
-		unsigned char state[16] = {
-				0xf3, 0x3c, 0xcd, 0x08, 
-				0x44, 0xc6, 0x5d, 0xf2, 
-				0x81, 0x27, 0xc3, 0x73, 
-				0xec, 0xba, 0xfb, 0xe6
-			}, 
-			key[16] = {
-				0x00, 0x00, 0x00, 0x00, 
-				0x00, 0x00, 0x00, 0x00, 
-				0x00, 0x00, 0x00, 0x00, 
-				0x00, 0x00, 0x00, 0x00
-			}, 
-			*newState, *newKey, res[16];
-
-		newState = addRoundKey(state, key);
-		newKey = keySchedule(key, 0);
-
-		for (int i = 1; i < 10; i++) {
-			newState = subBytes(newState);
-			newState = shiftRows(newState);
-			newState = mixColumns(newState);
-			newState = addRoundKey(newState, newKey);
-			newKey = keySchedule(newKey, i);
-		}
-
+	for (int i = 1; i < 10; i++) {
 		newState = subBytes(newState);
 		newState = shiftRows(newState);
+		newState = mixColumns(newState);
 		newState = addRoundKey(newState, newKey);
-
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				res[4 * i + j] = newState[4 * j + i];
-			}
-		}
-		
-		return 0;
+		newKey = keySchedule(newKey, i);
 	}
 
-	//Key			00000000000000000000000000000000
-	//Plaintext		f34481ec3cc627bacd5dc3fb08f273e6
-	//Ciphertext	0336763e966d92595a567cc9ce537f5e
+	newState = subBytes(newState);
+	newState = shiftRows(newState);
+	newState = addRoundKey(newState, newKey);
+
+	// Only to make sure the encryption is correct
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			res[4 * i + j] = newState[4 * j + i];
+		}
+	}
+		
+	return 0;
+}
+
+//Key			00000000000000000000000000000000
+//Plaintext		f34481ec3cc627bacd5dc3fb08f273e6
+//Ciphertext	0336763e966d92595a567cc9ce537f5e
