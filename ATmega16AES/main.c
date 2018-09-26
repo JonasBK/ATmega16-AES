@@ -20,48 +20,6 @@ unsigned char S[] = {
 	0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
 0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
 
-unsigned char* subBytes(unsigned char currentState[16]) {
-	static unsigned char newState[16];
-	newState[0] = S[currentState[0]];
-	newState[1] = S[currentState[1]];
-	newState[2] = S[currentState[2]];
-	newState[3] = S[currentState[3]];
-	newState[4] = S[currentState[4]];
-	newState[5] = S[currentState[5]];
-	newState[6] = S[currentState[6]];
-	newState[7] = S[currentState[7]];
-	newState[8] = S[currentState[8]];
-	newState[9] = S[currentState[9]];
-	newState[10] = S[currentState[10]];
-	newState[11] = S[currentState[11]];
-	newState[12] = S[currentState[12]];
-	newState[13] = S[currentState[13]];
-	newState[14] = S[currentState[14]];
-	newState[15] = S[currentState[15]];
-	return newState;
-}
-
-unsigned char* shiftRows(unsigned char currentState[16]) {
-    static unsigned char newState[16];
-    newState[0] = currentState[0];
-	newState[1] = currentState[1];
-	newState[2] = currentState[2];
-	newState[3] = currentState[3];
-	newState[4] = currentState[5];
-	newState[5] = currentState[6];
-	newState[6] = currentState[7];
-	newState[7] = currentState[4];
-	newState[8] = currentState[10];
-	newState[9] = currentState[11];
-	newState[10] = currentState[8];
-	newState[11] = currentState[9];
-	newState[12] = currentState[15];
-	newState[13] = currentState[12];
-	newState[14] = currentState[13];
-	newState[15] = currentState[14];
-    return newState;
-}
-
 //Multiply two numbers in the GF(2^8) finite field defined by the polynomial x^8 + x^4 + x^3 + x + 1 = 0
 char gMul(char a, char b) {
 	char p = 0;
@@ -101,32 +59,30 @@ unsigned char* mixColumns(unsigned char state[16]) {
 	return result;
 }
 
-unsigned char* addRoundKey(unsigned char currentState[16], unsigned char key[16]) {
+unsigned char* addKeySubShift(unsigned char currentState[16], unsigned char key[16]) {
 	static unsigned char newState[16];
-	newState[0] = currentState[0] ^ key[0];
-	newState[1] = currentState[1] ^ key[1];
-	newState[2] = currentState[2] ^ key[2];
-	newState[3] = currentState[3] ^ key[3];
-	newState[4] = currentState[4] ^ key[4];
-	newState[5] = currentState[5] ^ key[5];
-	newState[6] = currentState[6] ^ key[6];
-	newState[7] = currentState[7] ^ key[7];
-	newState[8] = currentState[8] ^ key[8];
-	newState[9] = currentState[9] ^ key[9];
-	newState[10] = currentState[10] ^ key[10];
-	newState[11] = currentState[11] ^ key[11];
-	newState[12] = currentState[12] ^ key[12];
-	newState[13] = currentState[13] ^ key[13];
-	newState[14] = currentState[14] ^ key[14];
-	newState[15] = currentState[15] ^ key[15];	
+	newState[0] = S[currentState[0] ^ key[0]];
+	newState[1] = S[currentState[1] ^ key[1]];
+	newState[2] = S[currentState[2] ^ key[2]];
+	newState[3] = S[currentState[3] ^ key[3]];
+	newState[4] = S[currentState[5] ^ key[5]];
+	newState[5] = S[currentState[6] ^ key[6]];
+	newState[6] = S[currentState[7] ^ key[7]];
+	newState[7] = S[currentState[4] ^ key[4]];
+	newState[8] = S[currentState[10] ^ key[10]];
+	newState[9] = S[currentState[11] ^ key[11]];
+	newState[10] = S[currentState[8] ^ key[8]];
+	newState[11] = S[currentState[9] ^ key[9]];
+	newState[12] = S[currentState[15] ^ key[15]];
+	newState[13] = S[currentState[12] ^ key[12]];
+	newState[14] = S[currentState[13] ^ key[13]];
+	newState[15] = S[currentState[14] ^ key[14]];
 	return newState;
 }
 
-unsigned char roundConst[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
-
-unsigned char* keySchedule(unsigned char currentKey[16], int round) {
+unsigned char* keySchedule(unsigned char currentKey[16], char roundConst) {
 	static unsigned char newKey[16];
-	newKey[0] = currentKey[0] ^ S[currentKey[7]] ^ roundConst[round];
+	newKey[0] = currentKey[0] ^ S[currentKey[7]] ^ roundConst;
 	newKey[4] = currentKey[4] ^ S[currentKey[11]];
 	newKey[8] = currentKey[8] ^ S[currentKey[15]];
 	newKey[12] = currentKey[12] ^ S[currentKey[3]];
@@ -160,66 +116,61 @@ int main(void) {
 		}, 
 		*newState, *newKey, res[16];
 
-	newState = addRoundKey(state, key);
-	newKey = keySchedule(key, 0);
+	newState = addKeySubShift(state, key);
+	newKey = keySchedule(key, 0x01);
 
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 1);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x02);
 	
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 2);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x04);
 
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 3);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x08);
 	
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 4);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x10);
 
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 5);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x20);
 	
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 6);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x40);
 
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 7);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x80);
 	
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 8);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x1B);
 
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
 	newState = mixColumns(newState);
-	newState = addRoundKey(newState, newKey);
-	newKey = keySchedule(newKey, 9);
+	newState = addKeySubShift(newState, newKey);
+	newKey = keySchedule(newKey, 0x36);
 
-	newState = subBytes(newState);
-	newState = shiftRows(newState);
-	newState = addRoundKey(newState, newKey);
+	newState[0] ^= newKey[0];
+	newState[1] ^= newKey[1];
+	newState[2] ^= newKey[2];
+	newState[3] ^= newKey[3];
+	newState[4] ^= newKey[4];
+	newState[5] ^= newKey[5];
+	newState[6] ^= newKey[6];
+	newState[7] ^= newKey[7];
+	newState[8] ^= newKey[8];
+	newState[9] ^= newKey[9];
+	newState[10] ^= newKey[10];
+	newState[11] ^= newKey[11];
+	newState[12] ^= newKey[12];
+	newState[13] ^= newKey[13];
+	newState[14] ^= newKey[14];
+	newState[15] ^= newKey[15];	
 
 	// Only to make sure the encryption is correct and not considered part of optimized code
 	for (int i = 0; i < 4; i++) {
