@@ -20,42 +20,32 @@ unsigned char S[] = {
 	0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
 0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
 
-//Multiply two numbers in the GF(2^8) finite field defined by the polynomial x^8 + x^4 + x^3 + x + 1 = 0
-char gMul(char a, char b) {
-	char p = 0;
-	for (int i = 0; i < 8; i++) {
-		if (b & 1) {
-			p ^= a;
-		}
-		if (a & 0x80) {
-			a <<= 1;
-			a ^= 0x1b;
-			} else {
-			a <<= 1;
-		}
-		b >>= 1;
+unsigned char mul2(unsigned char a) {
+	unsigned char result = a << 1u;
+	if (a & 0x80u) {
+		result ^= 0x1Bu;
 	}
-	return p;
+	return result;
 }
 
 unsigned char* mixColumns(unsigned char state[16]) {
 	static unsigned char result[16];
-	result[0] = gMul(0x02, state[0]) ^ gMul(0x03, state[4]) ^ state[8] ^ state[12];
-	result[1] = gMul(0x02, state[1]) ^ gMul(0x03, state[5]) ^ state[9] ^ state[13];
-	result[2] = gMul(0x02, state[2]) ^ gMul(0x03, state[6]) ^ state[10] ^ state[14];
-	result[3] = gMul(0x02, state[3]) ^ gMul(0x03, state[7]) ^ state[11] ^ state[15];
-	result[4] = state[0] ^ gMul(0x02, state[4]) ^ gMul(0x03, state[8]) ^ state[12];
-	result[5] = state[1] ^ gMul(0x02, state[5]) ^ gMul(0x03, state[9]) ^ state[13];
-	result[6] = state[2] ^ gMul(0x02, state[6]) ^ gMul(0x03, state[10]) ^ state[14];
-	result[7] = state[3] ^ gMul(0x02, state[7]) ^ gMul(0x03, state[11]) ^ state[15];
-	result[8] = state[0] ^ state[4] ^ gMul(0x02, state[8]) ^ gMul(0x03, state[12]);
-	result[9] = state[1] ^ state[5] ^ gMul(0x02, state[9]) ^ gMul(0x03, state[13]);
-	result[10] = state[2] ^ state[6] ^ gMul(0x02, state[10]) ^ gMul(0x03, state[14]);
-	result[11] = state[3] ^ state[7] ^ gMul(0x02, state[11]) ^ gMul(0x03, state[15]);
-	result[12] = gMul(0x03, state[0]) ^ state[4] ^ state[8] ^ gMul(0x02, state[12]);
-	result[13] = gMul(0x03, state[1]) ^ state[5] ^ state[9] ^ gMul(0x02, state[13]);
-	result[14] = gMul(0x03, state[2]) ^ state[6] ^ state[10] ^ gMul(0x02, state[14]);	
-	result[15] = gMul(0x03, state[3]) ^ state[7] ^ state[11] ^ gMul(0x02, state[15]);
+	result[0] = mul2(state[0]) ^ mul2(state[4]) ^ state[4] ^ state[8] ^ state[12];
+	result[1] = mul2(state[1]) ^ mul2(state[5]) ^ state[5] ^ state[9] ^ state[13];
+	result[2] = mul2(state[2]) ^ mul2(state[6]) ^ state[6] ^ state[10] ^ state[14];
+	result[3] = mul2(state[3]) ^ mul2(state[7]) ^ state[7] ^ state[11] ^ state[15];
+	result[4] = state[0] ^ mul2(state[4]) ^ mul2(state[8]) ^ state[8] ^ state[12];
+	result[5] = state[1] ^ mul2(state[5]) ^ mul2(state[9]) ^ state[9] ^ state[13];
+	result[6] = state[2] ^ mul2(state[6]) ^ mul2(state[10]) ^ state[10] ^ state[14];
+	result[7] = state[3] ^ mul2(state[7]) ^ mul2(state[11]) ^ state[11] ^ state[15];
+	result[8] = state[0] ^ state[4] ^ mul2(state[8]) ^ mul2(state[12]) ^ state[12];
+	result[9] = state[1] ^ state[5] ^ mul2(state[9]) ^ mul2(state[13]) ^ state[13];
+	result[10] = state[2] ^ state[6] ^ mul2(state[10]) ^ mul2(state[14]) ^ state[14];
+	result[11] = state[3] ^ state[7] ^ mul2(state[11]) ^ mul2(state[15]) ^ state[15];
+	result[12] = mul2(state[0]) ^ state[0] ^ state[4] ^ state[8] ^ mul2(state[12]);
+	result[13] = mul2(state[1]) ^ state[1] ^ state[5] ^ state[9] ^ mul2(state[13]);
+	result[14] = mul2(state[2]) ^ state[2] ^ state[6] ^ state[10] ^ mul2(state[14]);	
+	result[15] = mul2(state[3]) ^ state[3] ^ state[7] ^ state[11] ^ mul2(state[15]);
 	return result;
 }
 

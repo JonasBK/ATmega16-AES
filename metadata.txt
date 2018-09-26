@@ -32,3 +32,8 @@ Version 5, no optimization:
 Clock Counter: 141750
 Program Memory Usage: 3932 bytes
 Data Memory Usage: 320 bytes
+
+Version 6, no optimization:
+Clock Counter: 31456
+Program Memory Usage: 3928 bytes
+Data Memory Usage: 320 bytes
